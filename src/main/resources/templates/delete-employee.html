@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Delete Employee</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body>
+    <h1>Delete Employee</h1>
+    <p th:if="${error}" th:text="${error}" class="error"></p>
+    <p th:if="${success}" th:text="${success}" class="success"></p>
+    <form th:action="@{/delete/{id}(id=${employee.id})}" th:object="${employee}" method="post">
+        <label>ID:</label><input type="number" th:field="*{id}" readonly class="readonly"><br>
+        <label>Name:</label><input type="text" th:field="*{name}" readonly class="readonly"><br>
+        <label>Email:</label><input type="text" th:field="*{email}" readonly class="readonly"><br>
+        <label>Salary:</label><input type="number" step="0.01" th:field="*{salary}" readonly class="readonly"><br>
+        <label>Dept:</label><input type="text" th:field="*{department}" readonly class="readonly"><br>
+        <button type="submit">Delete Employee</button>
+    </form>
+    <a href="/">Back</a>
+</body>
+</html>
