@@ -119,24 +119,40 @@ public class EmployeeController {
      * 
      * Note: Write proper annotations for each of these methods
      */
+    @GetMapping("/add")
     public String showAddEmployeeForm(Model model) {
-        List<Employee> employees=getAllEmployees();
-        model.addAttribute("employees", employees);
-
-        /*
-         * Write code here for adding an empty object of Employee class to model
-         * and return add-employee form
-         */
-        return "index";
+        model.addAttribute("employee", new Employee());
+        return "add-employee";
     }
-
+    @PostMapping("/add")
     public String addEmployee(@ModelAttribute Employee employee, Model model) {
-        /*
-         * Write code here to add the details of the employee to the database
-         * Handle exceptions carefully.
-         */
-        return "";
+        try (Connection conn = getConnection()) {
+            String sql = "INSERT INTO employee (id, name, email, salary, department) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement statement = conn.prepareStatement(sql);
+            statement.setLong(1, employee.getId());
+            statement.setString(2, employee.getName());
+            statement.setString(3, employee.getEmail());
+            statement.setDouble(4, employee.getSalary());
+            statement.setString(5, employee.getDepartment());
+            statement.executeUpdate();
+
+            model.addAttribute("success", "Successfully added employee " + employee.getName());
+            // Explicitly create new object to clear the form
+            Employee newEmployee = new Employee();
+            model.addAttribute("employee", newEmployee);
+            return "add-employee";
+        } catch (SQLException e) {
+            model.addAttribute("error", "Error adding employee " + e.getMessage());
+            e.printStackTrace();
+            return "add-employee";
+        }
     }
+
+    
+    
+        
+      
+    
 
     /*
      * TASK 4: Implement the feature to search employees by name. 
@@ -146,7 +162,29 @@ public class EmployeeController {
      * 
      * Note: Write proper annotation for the method. 
      */
+    @GetMapping("/search")
     public String searchEmployees(@RequestParam String name, Model model) {
+        List<Employee> employees = new ArrayList<>();
+        try (Connection conn = getConnection()) {
+            String sql = "SELECT * FROM employee WHERE name LIKE ?";
+            PreparedStatement statement = conn.prepareStatement(sql);
+            statement.setString(1, "%" + name + "%");
+            statement.executeQuery();
+            ResultSet resultSet = statement.getResultSet();
+            // Iterate over the result set and create a list of employees
+            while (resultSet.next()) {
+                Employee employee = new Employee();
+                employee.setId(resultSet.getLong("id"));
+                employee.setName(resultSet.getString("name"));
+                employee.setEmail(resultSet.getString("email"));
+                employee.setSalary(resultSet.getDouble("salary"));
+                employee.setDepartment(resultSet.getString("department"));
+                employees.add(employee);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        model.addAttribute("employees", employees);
         return "index";
     }
 
@@ -158,43 +196,66 @@ public class EmployeeController {
      * 2. Implement editEmployee() to update the details of the employee in the database
      * 
      */
+    @GetMapping("/edit/{id}")
     public String showEditForm(@PathVariable Long id, Model model) {
-        /*
-         * Write code here to fetch the employee with the given ID from the database
-         * and add it to the model object. Return edit-employee form.
-         * 
-         * Hint: You might need to implement a new method getEmployeeById() 
-         * to fetch the employee by ID.
-         * 
-         * If employee with the given ID is not found in the DB, 
-         * then return to homepage with an error message "Employee with {id} not found.".
-         * 
-         * Note: edit-employee.html page already exists under resources/templates/ directory.
-         * You need to pass the employee object to the view using the model object.
-         */
-        return "";
+        try {
+            Employee employee = getEmployeeById(id);
+            model.addAttribute("employee", employee);
+            return "edit-employee";
+        } catch (Exception e) {
+            model.addAttribute("error", e.getMessage());
+            return "index";
+        }
     }
+
 
     /*
      * This method returns an employee with the given ID from the database.
      */
     private Employee getEmployeeById(Long id) throws Exception {
         Employee employee = new Employee();
-        /*
-         * Write code below to return an employee with the given ID from the database
-         * You need to fetch the data from the employees table in the database
-         * and create an object of Employee class.
-         * Handle exceptions carefully.
-         */
+        try (Connection conn = getConnection()) {
+            String sql = "SELECT * FROM employee WHERE id = ?";
+            PreparedStatement statement = conn.prepareStatement(sql);
+            statement.setLong(1, id);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                employee.setId(resultSet.getLong("id"));
+                employee.setName(resultSet.getString("name"));
+                employee.setEmail(resultSet.getString("email"));
+                employee.setSalary(resultSet.getDouble("salary"));
+                employee.setDepartment(resultSet.getString("department"));
+            } else {
+                throw new Exception("Employee not found");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return employee;
     }
 
+    /*
+     * This method updates an employee with the given ID in the database.
+     */
+    @PostMapping("/edit/{id}")
     public String editEmployee(@PathVariable long id, @ModelAttribute Employee employee, Model model) {
-        /*
-         * Write code here to update the details of the employee in the database
-         * Handle exceptions carefully.
-         */
-        return "";
+        try (Connection conn = getConnection()) {
+            String sql = "UPDATE employee SET name = ?, email = ?, salary = ?, department = ? WHERE id = ?";
+            PreparedStatement statement = conn.prepareStatement(sql);
+            statement.setString(1, employee.getName());
+            statement.setString(2, employee.getEmail());
+            statement.setDouble(3, employee.getSalary());
+            statement.setString(4, employee.getDepartment());
+            statement.setLong(5, id);
+            statement.executeUpdate();
+
+            model.addAttribute("success", "Successfully updated employee " + employee.getName());
+            return "edit-employee";
+        } catch (SQLException e) {
+            model.addAttribute("error", "Error updating employee " + e.getMessage());
+            e.printStackTrace();
+            return "edit-employee";
+        }
     }
 
     /*
@@ -205,26 +266,31 @@ public class EmployeeController {
      * 
      * Note: Write proper annotations for each of these methods
      */
+    @GetMapping("/delete/{id}")
     public String showDeleteForm(@PathVariable Long id, Model model) {
-        /*
-         * Write code here to display the delete employee form
-         * The form should already have details of the employee to be deleted.
-         * 
-         * Hint: You need to get the employee details by ID and add it to the model object.
-         * Use getEmployeeByID() method here.
-         * 
-         * Note: delete-employee.html page already exists under resources/templates/ directory.
-         * You need to pass the employee object to the view using the model object.
-         */
-        return "delete-employee";
+        try {
+            Employee employee = getEmployeeById(id);
+            model.addAttribute("employee", employee);
+            return "delete-employee";
+        } catch (Exception e) {
+            model.addAttribute("error", e.getMessage());
+            return "index";
+        }
     }
-
+    @PostMapping("/delete/{id}")
     public String deleteEmployee(@PathVariable long id, Model model, RedirectAttributes redirectAttributes) {
-        /*
-         * Write code here to delete the employee with the given ID from the database
-         * Handle exceptions carefully.
-         * After successful deletion, redirect to homepage.
-         */
-        return "";
+        try (Connection conn = getConnection()) {
+            String sql = "DELETE from employee WHERE id = ?";
+            PreparedStatement statement = conn.prepareStatement(sql);
+            statement.setLong(1, id);
+            statement.executeUpdate();
+            redirectAttributes.addFlashAttribute("success", "Employee with ID " + id + " is successfully deleted!");
+
+            return "redirect:/";
+        } catch (SQLException e) {
+            model.addAttribute("error", "Error updating employee " + e.getMessage());
+            e.printStackTrace();
+            return "delete-employee";
+        }
     }
 }
